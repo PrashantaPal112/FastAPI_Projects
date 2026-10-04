@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Path, HTTPException
+from fastapi import FastAPI, Path, HTTPException,Query
 import json
 
 app = FastAPI()
@@ -42,3 +42,19 @@ def individual_student_info(student_id: str = Path(..., description="Student id 
         return data[student_id]
     else:
         raise HTTPException(status_code=404, detail="Student information is not found")
+
+#QUERY PARAMETER API
+
+@app.get("/sort")
+
+def student_info_by_query(sorted_by: str = Query(..., description="Sort on the basis of parameters"),order:str=Query('asc',description="Order of sorting")):
+
+    valid_parameters=["age","class","roll","Math marks","English marks","Science marks"]
+
+    if sorted_by not in valid_parameters:
+        raise HTTPException(status_code=404, detail=f"Invalid parameter for sorting,Enter valid parametes from{valid_parameters}")
+
+    data=load_data()
+    sorted_data=list(data.values())
+    sorted_data.sort(key=lambda x:x[sorted_by], reverse=(order=='desc'))
+    return sorted_data
