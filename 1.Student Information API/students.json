@@ -98,5 +98,15 @@
     "English marks": 92,
     "Science marks": 90,
     "phone": "01710000010"
+  },
+  "S112": {
+    "name": "Prashanta",
+    "age": 23,
+    "class": 12,
+    "roll": 112,
+    "Math marks": 85,
+    "English marks": 78,
+    "Science marks": 90,
+    "phone": "01710000001"
   }
 }

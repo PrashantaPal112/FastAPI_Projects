@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Path, HTTPException,Query
+from fastapi import FastAPI, Path, HTTPException,Query,Body
 import json
 
 app = FastAPI()
@@ -8,6 +8,10 @@ def load_data():
     with open("students.json","r") as f:
         data =json.load(f)
     return data
+
+def save_data(data):
+    with open("students.json","w") as f:
+        json.dump(data,f)
 
 @app.get("/")
 
@@ -58,3 +62,15 @@ def student_info_by_query(sorted_by: str = Query(..., description="Sort on the b
     sorted_data=list(data.values())
     sorted_data.sort(key=lambda x:x[sorted_by], reverse=(order=='desc'))
     return sorted_data
+
+# POST request without data validation
+
+@app.post("/add_student")
+
+def add_student(student: dict=Body()):
+    data=load_data()
+    std_id=student.get("id")
+    data[std_id]=student
+    del data[std_id]["id"]
+    save_data(data)
+    return {"message":"Student information added successfully"}
