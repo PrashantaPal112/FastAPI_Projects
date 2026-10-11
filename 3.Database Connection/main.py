@@ -1,10 +1,11 @@
 from database import engine,sessionLocal
 from fastapi import FastAPI, Depends, HTTPException
 import model
-from model import Todo
+from model import Todo,Users
 from sqlalchemy.orm import Session
 from typing import Annotated,Optional
 from pydantic import BaseModel,Field
+from Router import auth
 
 class TodoRequest(BaseModel):
     title: str
@@ -21,6 +22,8 @@ class UpdateTodoRequest(BaseModel):
 app=FastAPI()
 
 model.Base.metadata.create_all(bind=engine)
+app.include_router(auth.router)  # include the auth router
+
 
 def get_db():
     db = sessionLocal()
