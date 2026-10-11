@@ -7,7 +7,7 @@ from model import Users
 from database import engine,sessionLocal
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer,OAuth2PasswordRequestForm
-from jose import jwt
+from jose import jwt, JWTError
 from datetime import timedelta,datetime,timezone
 class usersclass(BaseModel):
     username:str
@@ -31,7 +31,7 @@ db_dependency = Annotated[Session,Depends(get_db)]
 bcrypt_context=CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY="65d17b2b8fa2188ae59133e894bda27b8540597f096153059761a5cf9c640f92"
 ALGORITHM="HS256"
-Outh2beare= OAuth2PasswordBearer(tokenUrl="token")
+Outh2beare= OAuth2PasswordBearer(tokenUrl="login")
 
 def authenticate_user(username:str,password:str,db:Session):
 
@@ -44,9 +44,9 @@ def authenticate_user(username:str,password:str,db:Session):
 
 # CREATE LOG IN TOKEN FOR USER BY JWT(JESON WEB TOKEN)
 
-def create_access_token(user_name:str,user_id:str,expires_delta:timedelta):
+def create_access_token(user_name:str,user_id:str,user_role:str,expires_delta:timedelta):
 
-    encode={"sub":user_name,"id":user_id}
+    encode={"sub":user_name,"id":user_id,"role":user_role}
     expires=datetime.now(timezone.utc) + expires_delta
     encode.update({"exp":expires})
     return jwt.encode(encode,SECRET_KEY,algorithm=ALGORITHM)
@@ -55,16 +55,25 @@ def create_access_token(user_name:str,user_id:str,expires_delta:timedelta):
 # USER INFO BY DECODING USER LOG IN TOKEN
 
 def get_current_user(token: Annotated[str,Depends(Outh2beare)]):
-    payload=jwt.decode(token,SECRET_KEY,algorithms=[ALGORITHM])
-    username:str=payload.get('sub')
-    user_id:int=payload.get('id')
-    if username is None or user_id is None:
-        return HTTPException(status_code=404,detail='User not found')
-    return {'username':username, 'id':user_id}
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload=jwt.decode(token,SECRET_KEY,algorithms=[ALGORITHM])
+        username:str=payload.get('sub')
+        user_id:int=payload.get('id')
+        user_role:str=payload.get('role')
+        if username is None or user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    return {'username':username, 'id':user_id, 'role':user_role}
 
 # API FOR CREATE A NEW USER 
 
-@router.post("/create user")
+@router.post("/create_user")
 def create_user(db:db_dependency,new_user:usersclass):
     user_model=Users(
         email=new_user.email,
@@ -74,11 +83,12 @@ def create_user(db:db_dependency,new_user:usersclass):
         hash_password=bcrypt_context.hash(new_user.password),
         is_active=new_user.is_active,
         role=new_user.role
-        
-    ) 
+
+    )
     db.add(user_model)
     db.commit()
-    return user_model
+    db.refresh(user_model)
+    return {"msg": "User created successfully", "username": user_model.username}
 
 
 #LOG IN USER BY AUTHENTICATION
@@ -89,5 +99,5 @@ def login_user(db:db_dependency,form_data:Annotated[OAuth2PasswordRequestForm,De
     if user is False:
         raise HTTPException(status_code=401,detail="Failed Authentication")
     else:
-        token=create_access_token(user.username,user.id,timedelta(minutes=30))
+        token=create_access_token(user.username,user.id,user.role,timedelta(minutes=30))
         return {"access_token":token,"token_type":"bearer"}
