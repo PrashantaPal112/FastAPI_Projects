@@ -7,7 +7,7 @@ from model import Users
 from database import engine,sessionLocal
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer,OAuth2PasswordRequestForm
-from jose import jwt, JWTError
+from jose import jwt, JWTError, ExpiredSignatureError
 from datetime import timedelta,datetime,timezone
 class usersclass(BaseModel):
     username:str
@@ -67,6 +67,12 @@ def get_current_user(token: Annotated[str,Depends(Outh2beare)]):
         user_role:str=payload.get('role')
         if username is None or user_id is None:
             raise credentials_exception
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail="Token has expired. Please log in again to get a new token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except JWTError:
         raise credentials_exception
     return {'username':username, 'id':user_id, 'role':user_role}
